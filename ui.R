@@ -3,6 +3,14 @@ library(shiny)
 library(shinydashboard)
 library(plotly)
 
+actionButton <- function(inputId, label, btn.style = "" , css.class = "") {
+  if ( btn.style %in% c("primary","info","success","warning","danger","inverse","link")) {
+    btn.css.class <- paste("btn",btn.style,sep="-")
+  } else btn.css.class = ""
+  
+  tags$button(id=inputId, type="button", class=paste("btn action-button",btn.css.class,css.class,collapse=" "), label)
+}
+
 shinyUI(dashboardPage(skin = "green",
   dashboardHeader(title = "Jolokia UI" #,
                    #actionLink("documentationActionlink", "Jolokia documentation", icon = icon("book"))
@@ -51,7 +59,25 @@ shinyUI(dashboardPage(skin = "green",
                           min=0, max=120, value=5)
       ),
       tabItem(tabName = "agentMgmtTab",
-              h2("Jolokia Agents Management")  
+              h2("Jolokia Agents Management"),
+              br(),
+              selectInput("agentListSelectInput", "Saved Agents:", 
+                          choices = c('None'='None')),
+              br(),
+              column(width = 6,
+                wellPanel(
+                  textInput("agentNameText", label = h3("Agent Name"), 
+                            value = "Enter value..."),
+                  textInput("agentHostText", label = h3("Agent Host"), 
+                            value = "Enter value..."),
+                  textInput("agentPortText", label = h3("Port"), 
+                            value = "Enter value..."),
+                  actionButton("testAgentButton", "Test Connection", "info"),
+                  actionButton("saveAgentButton", "Save", "danger"),
+                  #TODO Add the delete button
+                  textOutput("messageTextOutput")
+                )
+              )
       ) 
     )
   )

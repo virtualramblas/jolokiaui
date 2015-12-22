@@ -132,6 +132,78 @@ shinyServer(function(input, output, session) {
       plotCpuUsage()
     })
     
+    ## Agents management
+    getSavedAgents <- function() {
+      # Load the agent list from a file
+      agentsDetailsDataFrame <- loadAgentListFromFile()
+    }
+    
+    savedAgentsList <- getSavedAgents()
+    
+    getSavedAgentNames <- function() {
+      agentList <- getSavedAgents()
+      values <- as.character(agentList$Name)
+    }
+    
+    savedAgentNames <- getSavedAgentNames()
+    
+    updateSelectInput(session, "agentListSelectInput",
+                      choices = savedAgentNames #,
+                      #selected = "None"
+    )
+    
+    observeEvent(input$saveAgentButton, {
+      agentDataList <- getSavedAgents()
+      agentDataList$X <- NULL
+      transformedDataFrame <- transform(agentDataList, Name = as.character(Name))
+      transformedDataFrame <- transform(transformedDataFrame, Host = as.character(Host))
+      transformedDataFrame <- transform(transformedDataFrame, Port = as.numeric(Port))
+      
+      # Remove the agen from the list in case of update
+      filteredDataFrame <- transformedDataFrame[transformedDataFrame$Name == input$agentNameText, ]
+      if(nrow(filteredDataFrame) > 0 ) {
+        transformedDataFrame <- transformedDataFrame[transformedDataFrame$Name != input$agentNameText, ]
+      }
+      
+      transformedDataFrame <- rbind(transformedDataFrame, data.frame("Name"=input$agentNameText, "Host"=input$agentHostText, "Port"=input$agentPortText))
+      saveAgentToFile(transformedDataFrame)
+    })
+    
+    # Fill the form after combo box selection
+    observeEvent(input$agentListSelectInput, {
+      if(input$agentListSelectInput != 'None') {
+        agentDataList <- getSavedAgents()
+        agentDataList <- agentDataList[agentDataList$Name==input$agentListSelectInput,]
+        updateTextInput(session, "agentNameText", value = input$agentListSelectInput)
+        updateTextInput(session, "agentHostText", value = agentDataList[1,3])
+        updateTextInput(session, "agentPortText", value = agentDataList[1,4])
+      }
+    }
+    )
+    
+    # Test an agent after user click on the Test button
+    observeEvent(input$testAgentButton, {
+      # Compose the agent URL
+      agentUrl <- paste('http://', input$agentHostText, ':',
+                        input$agentPortText, '/jolokia/', sep="")
+      # Make a GET request to the agent
+      responseContent <- testAgentConnection(agentUrl)
+      # Parse the response status
+      if(class(responseContent) == 'list') {
+        if(responseContent$status == '200') {
+          responseMessage <- "Success!"
+        } else {
+          responseMessage <- "Failure!"
+        }
+      } else {
+        responseMessage <- "Failure!"
+      }
+      output$messageTextOutput <- renderText({ 
+        responseMessage
+      })
+    }
+    )
+    
   })
   
 })
