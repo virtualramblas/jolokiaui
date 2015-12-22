@@ -10,7 +10,8 @@ shinyUI(dashboardPage(skin = "green",
   dashboardSidebar(
     sidebarMenu(
       menuItem("Overview", tabName = "overviewTab", icon = icon("dashboard")),
-      menuItem("Configuration", tabName = "configurationTab", icon = icon("wrench") ,
+      menuItem("Configuration", tabName = "configurationTab", icon = icon("wrench"),
+               menuItem("General Settings", tabName = "settingsTab", icon = icon("wrench")),
                menuItem("Manage Agents", tabName = "agentMgmtTab", icon = icon("plug"))
       ),
       selectInput("agentSelectInput", "Agent:", 
@@ -43,8 +44,14 @@ shinyUI(dashboardPage(skin = "green",
       ),
       tabItem(tabName = "configurationTab"
       ),
+      tabItem(tabName = "settingsTab",
+              h2("General Settings"),
+              br(),
+              sliderInput("refreshInterval", "Refresh Interval (in seconds):", 
+                          min=0, max=120, value=5)
+      ),
       tabItem(tabName = "agentMgmtTab",
-              h2("Item 2.1 Tab Content")  
+              h2("Jolokia Agents Management")  
       ) 
     )
   )

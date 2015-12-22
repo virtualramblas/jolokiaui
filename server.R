@@ -5,14 +5,11 @@ library(dplyr)
 
 source("jolokiaUtils.R")
 
-data(movies, package = "ggplot2")
-minx <- min(movies$rating)
-maxx <- max(movies$rating)
-
 shinyServer(function(input, output, session) {
-  autoInvalidate <- reactiveTimer(5000, session)
   
   observe({
+    autoInvalidate <- reactiveTimer((input$refreshInterval) * 1000, session)
+    
     plotHeapUsage <- function() {
       autoInvalidate()
       
