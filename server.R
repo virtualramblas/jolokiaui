@@ -30,6 +30,7 @@ shinyServer(function(input, output, session) {
         Timestamp[idx] <- c(listFromJson$timestamp)
         Used[idx] <- c(listFromJson$value$used)
       }
+      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
       heapDataFrame <- data.frame(Timestamp, Used)
       
       p <- plot_ly(heapDataFrame, x = Timestamp, y = Used) %>%
@@ -61,6 +62,7 @@ shinyServer(function(input, output, session) {
         Timestamp[idx] <- c(listFromJson$timestamp)
         Thread.Count[idx] <- c(listFromJson$value)
       }
+      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
       heapDataFrame <- data.frame(Timestamp, Thread.Count)
       
       p <- plot_ly(heapDataFrame, x = Timestamp, y = Thread.Count) %>%
@@ -90,6 +92,7 @@ shinyServer(function(input, output, session) {
         Timestamp[idx] <- c(listFromJson$timestamp)
         Classes.Count[idx] <- c(listFromJson$value)
       }
+      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
       heapDataFrame <- data.frame(Timestamp, Classes.Count)
       
       p <- plot_ly(heapDataFrame, x = Timestamp, y = Classes.Count) %>%
@@ -119,6 +122,7 @@ shinyServer(function(input, output, session) {
         Timestamp[idx] <- c(listFromJson$timestamp)
         Cpu.Usage[idx] <- c(listFromJson$value * 100)
       }
+      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
       heapDataFrame <- data.frame(Timestamp, Cpu.Usage)
       
       p <- plot_ly(heapDataFrame, x = Timestamp, y = Cpu.Usage) %>%
