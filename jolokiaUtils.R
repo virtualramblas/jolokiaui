@@ -25,18 +25,29 @@ cpuUsageLogFilename <- paste0('CpuUsage',
 agentListFilename <- paste0('JolokiaAgentsList', ".csv")
 
 ## Performs a HTTP POST request to Jolokia
-makeHttpPostRequest <- function(agentUrl = defaultAgentUrl, operationType = 'read', mbeanName, attributeName) {
-  requestBody <- list(
-    type=operationType,
-    mbean=mbeanName,
-    attribute=attributeName
-  )
-  
+makeHttpPostRequest <- function(agentUrl = defaultAgentUrl, operationType = 'read', mbeanName, attributeName = '') {
+  requestBody <- list(type=operationType,
+                          mbean=mbeanName)
+  if(attributeName != '') { 
+    requestBody$attribute <- attributeName
+  }
   req <- POST(agentUrl, 
               body = requestBody, encode = "json")
   stop_for_status(req)
   json <- content(req, "text", "application/json")
 }   
+
+## Performs a HTTP POST request to Jolokia, save the content response to file and returns the content
+makeHttpPostRequestAndSaveToFile <- function(agentUrl = defaultAgentUrl, 
+                                             operationType = 'read', 
+                                             mbeanName, attributeName,
+                                             logFilename) {
+  responseContent <- makeHttpPostRequest(agentUrl, operationType,
+                                         mbeanName, attributeName)
+  writeToLogFile(logFilename, responseContent)
+  
+  fileContent <- readLines(logFilename)
+}
 
 ## Tests a connection to an agent
 testAgentConnection <- function(agentUrl) {
@@ -87,3 +98,35 @@ saveAgentToFile <- function(agentListDataFrame) {
   write.csv(agentListDataFrame, file = agentListFilename, 
             col.names = TRUE, quote = FALSE)
 }
+
+tailfile <- function(file, n) {
+  bufferSize <- 1024L
+  size <- file.info(file)$size
+  
+  if (size < bufferSize) {
+    bufferSize <- size
+  }
+  
+  pos <- size - bufferSize
+  text <- character()
+  k <- 0L
+  
+  f <- file(file, "rb")
+  on.exit(close(f))
+  
+  while(TRUE) {
+    seek(f, where=pos)
+    chars <- readChar(f, nchars=bufferSize)
+    k <- k + length(gregexpr(pattern="\\n", text=chars)[[1L]])
+    text <- paste0(text, chars)
+    
+    if (k > n || pos == 0L) {
+      break
+    }
+    
+    pos <- max(pos-bufferSize, 0L)
+  }
+  
+  tail(strsplit(text, "\\n")[[1L]], n)
+}
+

@@ -17,7 +17,9 @@ shinyUI(dashboardPage(skin = "green",
   ),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Overview", tabName = "overviewTab", icon = icon("dashboard")),
+      menuItem("Overview", tabName = "overviewTab", icon = icon("line-chart")),
+      menuItem("Dashboard", tabName = "dashboardTab", icon = icon("dashboard")),
+      menuItem("JVM Details", tabName = "jvmDetailsTab", icon = icon("coffee")),
       menuItem("Configuration", tabName = "configurationTab", icon = icon("wrench"),
                menuItem("General Settings", tabName = "settingsTab", icon = icon("wrench")),
                menuItem("Manage Agents", tabName = "agentMgmtTab", icon = icon("plug"))
@@ -50,6 +52,17 @@ shinyUI(dashboardPage(skin = "green",
               )
               
       ),
+      tabItem(tabName = "dashboardTab",
+              fluidRow(
+                uiOutput("cpuDashUi", width = 12), 
+                uiOutput("memoryDashUi", width = 12)
+              )
+      ),
+      tabItem(tabName = "jvmDetailsTab",
+              h2("Monitored JVM Details"),
+              #verbatimTextOutput("jvmSummary"),
+              dataTableOutput(outputId="jvmSummaryTable")
+      ),
       tabItem(tabName = "configurationTab"
       ),
       tabItem(tabName = "settingsTab",
@@ -74,7 +87,7 @@ shinyUI(dashboardPage(skin = "green",
                             value = "Enter value..."),
                   actionButton("testAgentButton", "Test Connection", "info"),
                   actionButton("saveAgentButton", "Save", "danger"),
-                  #TODO Add the delete button
+                  actionButton("deleteAgentButton", "Delete", "danger"),
                   textOutput("messageTextOutput")
                 )
               )
