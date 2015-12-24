@@ -12,8 +12,7 @@ actionButton <- function(inputId, label, btn.style = "" , css.class = "") {
 }
 
 shinyUI(dashboardPage(skin = "green",
-  dashboardHeader(title = "Jolokia UI" #,
-                   #actionLink("documentationActionlink", "Jolokia documentation", icon = icon("book"))
+  dashboardHeader(title = "Jolokia UI" 
   ),
   dashboardSidebar(
     sidebarMenu(
@@ -24,9 +23,7 @@ shinyUI(dashboardPage(skin = "green",
                menuItem("General Settings", tabName = "settingsTab", icon = icon("wrench")),
                menuItem("Manage Agents", tabName = "agentMgmtTab", icon = icon("plug"))
       ),
-      selectInput("agentSelectInput", "Agent:", 
-                  choices = c('localhost'='http://127.0.0.1:8778/jolokia/',
-                                  'None'='None'))
+      uiOutput("agentSelection")
     )
     
   ),
@@ -60,7 +57,6 @@ shinyUI(dashboardPage(skin = "green",
       ),
       tabItem(tabName = "jvmDetailsTab",
               h2("Monitored JVM Details"),
-              #verbatimTextOutput("jvmSummary"),
               dataTableOutput(outputId="jvmSummaryTable")
       ),
       tabItem(tabName = "configurationTab"
@@ -69,13 +65,15 @@ shinyUI(dashboardPage(skin = "green",
               h2("General Settings"),
               br(),
               sliderInput("refreshInterval", "Refresh Interval (in seconds):", 
-                          min=0, max=120, value=5)
+                          min=0, max=120, value=5),
+              br(),
+              actionButton("deleteHistoryButton", "Delete History", "danger")
       ),
       tabItem(tabName = "agentMgmtTab",
               h2("Jolokia Agents Management"),
               br(),
-              selectInput("agentListSelectInput", "Saved Agents:", 
-                          choices = c('None'='None')),
+              selectInput("agentListSelectInput", "Saved Agents:", choices = c('None'='None')
+                          ),
               br(),
               column(width = 6,
                 wellPanel(

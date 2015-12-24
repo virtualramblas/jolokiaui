@@ -14,8 +14,40 @@ shinyServer(function(input, output, session) {
   observe({
     autoInvalidate <- reactiveTimer((input$refreshInterval) * 1000, session)
     
+    getSavedAgents <- function() {
+      # Load the agent list from a file
+      agentsDetailsDataFrame <- loadAgentListFromFile()
+    }
+    
+    savedAgentsList <- getSavedAgents()
+    
+    getSavedAgentNames <- function() {
+      agentList <- savedAgentsList
+      #values <- as.character(agentList$Name)
+      values <- as.list(agentList$Name)
+    }
+    
+    output$agentSelection <- renderUI({
+      selectInput("agentSelectInput", "Agent:", 
+                  choices = getSavedAgentNames(),
+                  selected = "None"
+                  )
+    })
+    
+    updateSelectInput(session, "agentListSelectInput",
+                      choices = getSavedAgentNames(),
+                      selected = "None"
+    )
+    
+    getAgentUrlFromList <- function() {
+      agentDataList <- savedAgentsList[savedAgentsList$Name==input$agentSelectInput,]
+      agentUrl <- paste('http://', agentDataList[1,3], ':', agentDataList[1,4], '/jolokia/', sep = "")
+    }
+    
     getHeapUsage <- function() {
-      fileContent <- makeHttpPostRequestAndSaveToFile(mbeanName = 'java.lang:type=Memory',
+      
+      fileContent <- makeHttpPostRequestAndSaveToFile(agentUrl = getAgentUrlFromList(), 
+                                       mbeanName = 'java.lang:type=Memory',
                                        attributeName = 'HeapMemoryUsage',
                                        logFilename = heapUsageLogFilename)
     }
@@ -40,11 +72,15 @@ shinyServer(function(input, output, session) {
         Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
         heapDataFrame <- data.frame(Timestamp, Used)
         
+        x <- list(
+          title = ""
+        )
         p <- plot_ly(heapDataFrame, x = Timestamp, y = Used) %>%
           layout(title = "Heap Memory Usage",
                  showlegend = FALSE) %>%
           dplyr::filter(Used == max(Used)) %>%
-        layout(annotations = list(x = Timestamp, y = Used, text = "Peak", showarrow = T))
+        layout(annotations = list(x = Timestamp, y = Used, text = "Peak", showarrow = T),
+               xaxis = x)
       } 
     }
     
@@ -53,29 +89,38 @@ shinyServer(function(input, output, session) {
       plotHeapUsage()
     })
     
+    getThreadCount <- function() {
+      fileContent <- makeHttpPostRequestAndSaveToFile(agentUrl = getAgentUrlFromList(), 
+                                                      mbeanName = 'java.lang:type=Threading',
+                                                      attributeName = 'ThreadCount',
+                                                      logFilename = threadsLogFilename)
+    }
+    
     plotThreadCount <- function() {
       autoInvalidate()
       
-      # Get the values from the agent (HTTP request):
-      responseContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=Threading',
-                                             attributeName = 'ThreadCount')
-      writeToLogFile(threadsLogFilename, responseContent)
-      
-      fileContent <- readLines(threadsLogFilename)
-      fileLineCount <- length(fileContent)
-      Timestamp <- c(fileLineCount)
-      Thread.Count <- c(fileLineCount)
-      for(idx in 1:length(fileContent)) {
-        listFromJson <- fromJSON(fileContent[idx])
-        Timestamp[idx] <- c(listFromJson$timestamp)
-        Thread.Count[idx] <- c(listFromJson$value)
+      if(input$agentSelectInput != 'None') {
+        # Get the values from the agent (HTTP request):
+        fileContent <- getThreadCount()
+        fileLineCount <- length(fileContent)
+        Timestamp <- c(fileLineCount)
+        Thread.Count <- c(fileLineCount)
+        for(idx in 1:length(fileContent)) {
+          listFromJson <- fromJSON(fileContent[idx])
+          Timestamp[idx] <- c(listFromJson$timestamp)
+          Thread.Count[idx] <- c(listFromJson$value)
+        }
+        Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
+        heapDataFrame <- data.frame(Timestamp, Thread.Count)
+        
+        x <- list(
+          title = ""
+        )
+        p <- plot_ly(heapDataFrame, x = Timestamp, y = Thread.Count) %>%
+          layout(title = "Threads",
+                 showlegend = FALSE,
+                 xaxis = x)
       }
-      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
-      heapDataFrame <- data.frame(Timestamp, Thread.Count)
-      
-      p <- plot_ly(heapDataFrame, x = Timestamp, y = Thread.Count) %>%
-        layout(title = "Threads",
-               showlegend = FALSE) 
     }
     
     ## Render the Thread Count plot
@@ -83,29 +128,38 @@ shinyServer(function(input, output, session) {
       plotThreadCount()
     })
     
+    getClassCount <- function() {
+      fileContent <- makeHttpPostRequestAndSaveToFile(agentUrl = getAgentUrlFromList(),
+                                                      mbeanName = 'java.lang:type=ClassLoading',
+                                                      attributeName = 'LoadedClassCount',
+                                                      logFilename = classesLogFilename)
+    }
+    
     plotClassCount <- function() {
       autoInvalidate()
       
-      # Get the values from the agent (HTTP request):
-      responseContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=ClassLoading',
-                                             attributeName = 'LoadedClassCount')
-      writeToLogFile(classesLogFilename, responseContent)
-      
-      fileContent <- readLines(classesLogFilename)
-      fileLineCount <- length(fileContent)
-      Timestamp <- c(fileLineCount)
-      Classes.Count <- c(fileLineCount)
-      for(idx in 1:length(fileContent)) {
-        listFromJson <- fromJSON(fileContent[idx])
-        Timestamp[idx] <- c(listFromJson$timestamp)
-        Classes.Count[idx] <- c(listFromJson$value)
+      if(input$agentSelectInput != 'None') {
+        # Get the values from the agent (HTTP request):
+        fileContent <- getClassCount()
+        fileLineCount <- length(fileContent)
+        Timestamp <- c(fileLineCount)
+        Classes.Count <- c(fileLineCount)
+        for(idx in 1:length(fileContent)) {
+          listFromJson <- fromJSON(fileContent[idx])
+          Timestamp[idx] <- c(listFromJson$timestamp)
+          Classes.Count[idx] <- c(listFromJson$value)
+        }
+        Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
+        heapDataFrame <- data.frame(Timestamp, Classes.Count)
+        
+        x <- list(
+          title = ""
+        )
+        p <- plot_ly(heapDataFrame, x = Timestamp, y = Classes.Count) %>%
+          layout(title = "Classes",
+                 showlegend = FALSE,
+                 xaxis = x) 
       }
-      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
-      heapDataFrame <- data.frame(Timestamp, Classes.Count)
-      
-      p <- plot_ly(heapDataFrame, x = Timestamp, y = Classes.Count) %>%
-        layout(title = "Classes",
-               showlegend = FALSE) 
     }
     
     ## Render the Heap Memory Usage plot
@@ -113,29 +167,38 @@ shinyServer(function(input, output, session) {
       plotClassCount()
     })
     
+    getCpuUsage <- function() {
+      fileContent <- makeHttpPostRequestAndSaveToFile(agentUrl = getAgentUrlFromList(),
+                                                      mbeanName = 'java.lang:type=OperatingSystem',
+                                                      attributeName = 'ProcessCpuLoad',
+                                                      logFilename = cpuUsageLogFilename)
+    }
+    
     plotCpuUsage <- function() {
       autoInvalidate()
       
-      # Get the values from the agent (HTTP request):
-      responseContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=OperatingSystem',
-                                             attributeName = 'ProcessCpuLoad')
-      writeToLogFile(cpuUsageLogFilename, responseContent)
-      
-      fileContent <- readLines(cpuUsageLogFilename)
-      fileLineCount <- length(fileContent)
-      Timestamp <- c(fileLineCount)
-      Cpu.Usage <- c(fileLineCount)
-      for(idx in 1:length(fileContent)) {
-        listFromJson <- fromJSON(fileContent[idx])
-        Timestamp[idx] <- c(listFromJson$timestamp)
-        Cpu.Usage[idx] <- c(listFromJson$value * 100)
+      if(input$agentSelectInput != 'None') {
+        # Get the values from the agent (HTTP request):
+        fileContent <- getCpuUsage()
+        fileLineCount <- length(fileContent)
+        Timestamp <- c(fileLineCount)
+        Cpu.Usage <- c(fileLineCount)
+        for(idx in 1:length(fileContent)) {
+          listFromJson <- fromJSON(fileContent[idx])
+          Timestamp[idx] <- c(listFromJson$timestamp)
+          Cpu.Usage[idx] <- c(listFromJson$value * 100)
+        }
+        Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
+        heapDataFrame <- data.frame(Timestamp, Cpu.Usage)
+        
+        x <- list(
+          title = ""
+        )
+        p <- plot_ly(heapDataFrame, x = Timestamp, y = Cpu.Usage) %>%
+          layout(title = "CPU Usage (%)",
+                 showlegend = FALSE,
+                 xaxis = x) 
       }
-      Timestamp <- as.POSIXct(Timestamp, origin="1970-01-01")
-      heapDataFrame <- data.frame(Timestamp, Cpu.Usage)
-      
-      p <- plot_ly(heapDataFrame, x = Timestamp, y = Cpu.Usage) %>%
-        layout(title = "CPU Usage (%)",
-               showlegend = FALSE) 
     }
     
     ## Render the CPU Usage plot
@@ -144,24 +207,26 @@ shinyServer(function(input, output, session) {
     })
     
     ## Agents management
-    getSavedAgents <- function() {
-      # Load the agent list from a file
-      agentsDetailsDataFrame <- loadAgentListFromFile()
-    }
-    
-    savedAgentsList <- getSavedAgents()
-    
-    getSavedAgentNames <- function() {
-      agentList <- getSavedAgents()
-      values <- as.character(agentList$Name)
-    }
-    
-    savedAgentNames <- getSavedAgentNames()
-    
-    updateSelectInput(session, "agentListSelectInput",
-                      choices = savedAgentNames #,
-                      #selected = "None"
-    )
+#     getSavedAgents <- function() {
+#       print('getSavedAgents() start')
+#       # Load the agent list from a file
+#       agentsDetailsDataFrame <- loadAgentListFromFile()
+#     }
+#     
+#     savedAgentsList <- getSavedAgents()
+#     
+#     getSavedAgentNames <- function() {
+#       print('getSavedAgentNames() start')
+#       agentList <- getSavedAgents()
+#       values <- as.character(agentList$Name)
+#     }
+#     
+#     savedAgentNames <- getSavedAgentNames()
+#     
+#     updateSelectInput(session, "agentListSelectInput",
+#                       choices = savedAgentNames #,
+#                       #selected = "None"
+#     )
     
     observeEvent(input$saveAgentButton, {
       agentDataList <- getSavedAgents()
@@ -182,6 +247,11 @@ shinyServer(function(input, output, session) {
                         choices = getSavedAgentNames(),
                         selected = input$agentNameText
       )
+      
+      updateSelectInput(session, "agentSelectInput",
+                        choices = getSavedAgentNames() #,
+                        #selected = input$agentNameText
+      )
     })
     
     observeEvent(input$deleteAgentButton, {
@@ -201,8 +271,17 @@ shinyServer(function(input, output, session) {
                         choices = getSavedAgentNames(),
                         selected = "None"
       )
+      
+      updateSelectInput(session, "agentSelectInput",
+                        choices = getSavedAgentNames() #,
+                        #selected = input$agentNameText
+      )
     })
     
+#     updateSelectInput(session, "agentSelectInput",
+#                       choices = getSavedAgentNames() #,
+#                       #selected = input$agentNameText
+#     )
     
     # Fill the form after combo box selection
     observeEvent(input$agentListSelectInput, {
@@ -239,18 +318,26 @@ shinyServer(function(input, output, session) {
     }
     )
     
+    ## Delete history ##
+    observeEvent(input$deleteHistoryButton, {
+      unlink('*.json')
+    }
+    )
+    
     ## Dashboard view
     plotFirstRowDial <- function() {
       autoInvalidate()
       if(input$agentSelectInput != 'None') {
-        fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=Memory',
-                                                        attributeName = 'HeapMemoryUsage')
+        fileContent <- makeHttpPostRequest(agentUrl = getAgentUrlFromList(),
+                                           mbeanName = 'java.lang:type=Memory',
+                                           attributeName = 'HeapMemoryUsage')
         listFromJson <- fromJSON(fileContent[1])
         currentHeapMemoryUsed <- listFromJson$value$used
         maxHeapSize <- listFromJson$value$max
         cpuUsageValue <- (currentHeapMemoryUsed/maxHeapSize) * 100 
         
-        fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=Threading',
+        fileContent <- makeHttpPostRequest(agentUrl = getAgentUrlFromList(),
+                                            mbeanName = 'java.lang:type=Threading',
                                            attributeName = 'ThreadCount')
         listFromJson <- fromJSON(fileContent[1])
         currentThreadCount <- listFromJson$value
@@ -267,12 +354,14 @@ shinyServer(function(input, output, session) {
     
     output$lowerRowDialPlot <- renderPlot({
       if(input$agentSelectInput != 'None') {
-        fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=ClassLoading',
+        fileContent <- makeHttpPostRequest(agentUrl = getAgentUrlFromList(), 
+                                           mbeanName = 'java.lang:type=ClassLoading',
                                            attributeName = 'LoadedClassCount')
         listFromJson <- fromJSON(fileContent[1])
         currentClassCount <- listFromJson$value
         
-        fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=OperatingSystem',
+        fileContent <- makeHttpPostRequest(agentUrl = getAgentUrlFromList(),
+                                            mbeanName = 'java.lang:type=OperatingSystem',
                                            attributeName = 'ProcessCpuLoad')
         listFromJson <- fromJSON(fileContent[1])
         currentProcessCpuLoad <- listFromJson$value
@@ -286,34 +375,30 @@ shinyServer(function(input, output, session) {
     output$cpuDashUi <- renderUI({
       if(input$agentSelectInput != 'None') {
         column(width = 8,
-               #box(title = "CPU Usage", solidHeader = TRUE, collapsible = TRUE, status="primary", width = 12,
-                   plotOutput("upperRowDialPlot", width = "100%", height = "350px"),
-                   plotOutput("lowerRowDialPlot", width = "100%", height = "350px")
-                   #)
+               plotOutput("upperRowDialPlot", width = "100%", height = "350px"),
+               plotOutput("lowerRowDialPlot", width = "100%", height = "350px")
         )
       }
     })
     
     ## JVM details
-#     output$jvmSummary <- renderText({
-#       fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=Runtime',
-#                                          attributeName = '')
-#       listFromJson <- fromJSON(fileContent[1])
-#       
-#     })
-    
     output$jvmSummaryTable <- renderDataTable({
-      fileContent <- makeHttpPostRequest(mbeanName = 'java.lang:type=Runtime',
-                                         attributeName = '')
-      listFromJson <- fromJSON(fileContent[1])
-      Values <- c(listFromJson$value$BootClassPath, listFromJson$value$BootClassPathSupported,
-                  listFromJson$value$ClassPath, listFromJson$value$LibraryPath,
-                  listFromJson$value$Name, listFromJson$value$ProcessID,
-                  listFromJson$value$SpecName, listFromJson$value$SpecVendor, listFromJson$value$SpecVersion,
-                  listFromJson$value$StartTime, listFromJson$value$Uptime, listFromJson$value$VmName,
-                  listFromJson$value$VmVendor, listFromJson$value$VmVersion)
-      jvmDf <- data.frame(Attributes, Values)
-    }, options = list(lengthMenu = c(5, 10, 30), pageLength = 5))
+      if(input$agentSelectInput != 'None') {
+          fileContent <- makeHttpPostRequest(agentUrl = getAgentUrlFromList(),
+                                             mbeanName = 'java.lang:type=Runtime',
+                                             attributeName = '')
+          listFromJson <- fromJSON(fileContent[1])
+          Values <- c(listFromJson$value$BootClassPath, listFromJson$value$BootClassPathSupported,
+                      listFromJson$value$ClassPath, listFromJson$value$LibraryPath,
+                      listFromJson$value$Name, listFromJson$value$ProcessID,
+                      listFromJson$value$SpecName, listFromJson$value$SpecVendor, listFromJson$value$SpecVersion,
+                      listFromJson$value$StartTime, listFromJson$value$Uptime, listFromJson$value$VmName,
+                      listFromJson$value$VmVendor, listFromJson$value$VmVersion)
+          jvmDf <- data.frame(Attributes, Values)
+      }
+      }, options = list(lengthMenu = c(5, 10, 30), pageLength = 5))
+    
+    
   })
   
 })
