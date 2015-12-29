@@ -206,28 +206,6 @@ shinyServer(function(input, output, session) {
       plotCpuUsage()
     })
     
-    ## Agents management
-#     getSavedAgents <- function() {
-#       print('getSavedAgents() start')
-#       # Load the agent list from a file
-#       agentsDetailsDataFrame <- loadAgentListFromFile()
-#     }
-#     
-#     savedAgentsList <- getSavedAgents()
-#     
-#     getSavedAgentNames <- function() {
-#       print('getSavedAgentNames() start')
-#       agentList <- getSavedAgents()
-#       values <- as.character(agentList$Name)
-#     }
-#     
-#     savedAgentNames <- getSavedAgentNames()
-#     
-#     updateSelectInput(session, "agentListSelectInput",
-#                       choices = savedAgentNames #,
-#                       #selected = "None"
-#     )
-    
     observeEvent(input$saveAgentButton, {
       agentDataList <- getSavedAgents()
       agentDataList$X <- NULL
@@ -249,8 +227,7 @@ shinyServer(function(input, output, session) {
       )
       
       updateSelectInput(session, "agentSelectInput",
-                        choices = getSavedAgentNames() #,
-                        #selected = input$agentNameText
+                        choices = getSavedAgentNames()
       )
     })
     
@@ -277,11 +254,6 @@ shinyServer(function(input, output, session) {
                         #selected = input$agentNameText
       )
     })
-    
-#     updateSelectInput(session, "agentSelectInput",
-#                       choices = getSavedAgentNames() #,
-#                       #selected = input$agentNameText
-#     )
     
     # Fill the form after combo box selection
     observeEvent(input$agentListSelectInput, {

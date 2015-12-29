@@ -67,6 +67,8 @@ shinyUI(dashboardPage(skin = "green",
               sliderInput("refreshInterval", "Refresh Interval (in seconds):", 
                           min=0, max=120, value=5),
               br(),
+#               textInput("logDirectoryInput", "The directory where the JSON logs are stored:"),
+#               br(),
               actionButton("deleteHistoryButton", "Delete History", "danger")
       ),
       tabItem(tabName = "agentMgmtTab",
